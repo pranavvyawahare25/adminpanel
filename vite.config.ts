@@ -4,15 +4,34 @@ import themePlugin from "@replit/vite-plugin-shadcn-theme-json";
 import path, { dirname } from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { fileURLToPath } from "url";
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Ensure the _redirects file exists in dist root after build
+const copyRedirects = () => {
+  return {
+    name: 'copy-redirects',
+    closeBundle() {
+      const publicDir = path.resolve(__dirname, 'client/public');
+      const distDir = path.resolve(__dirname, 'dist');
+      if (fs.existsSync(path.join(publicDir, '_redirects'))) {
+        fs.copyFileSync(
+          path.join(publicDir, '_redirects'),
+          path.join(distDir, '_redirects')
+        );
+      }
+    }
+  };
+};
 
 export default defineConfig({
   plugins: [
     react(),
     runtimeErrorOverlay(),
     themePlugin(),
+    copyRedirects(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
