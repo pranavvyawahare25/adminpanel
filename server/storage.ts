@@ -1006,13 +1006,12 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Configure which storage to use
-// Default to in-memory storage unless specifically set to use Supabase
-// This will be set to 'false' in supabase.ts if the URL format is invalid
-const useSupabase = process.env.USE_SUPABASE !== 'false';
+// Force memory storage for Netlify deployment
+const useSupabase = process.env.USE_SUPABASE === 'true';
+console.log(`[storage] Using ${useSupabase ? 'Supabase' : 'in-memory'} storage`);
 
-// Export the appropriate storage implementation
-export const storage = useSupabase ? new SupabaseStorage() : new MemStorage();
+// Always use in-memory storage for now to ensure Netlify compatibility
+export const storage = new MemStorage();
 
 // Initialize Supabase connection if we're using it
 if (useSupabase) {
