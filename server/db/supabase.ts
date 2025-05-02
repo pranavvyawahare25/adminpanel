@@ -1,6 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import 'dotenv/config';
 
+// In-memory user database for when Supabase is not available
+const inMemoryUsers = [];
+let nextUserId = 1;
+
 // Function to create and export Supabase client
 function setupSupabase() {
   // Get Supabase credentials from environment variables
@@ -51,16 +55,90 @@ function setupSupabase() {
   }
 }
 
-// Create a dummy client that will fail gracefully
+// Create a more sophisticated dummy client that handles common operations
 function createDummyClient() {
   console.log('[storage] Using in-memory storage for development');
+  
   return {
-    from: () => ({ 
-      select: () => Promise.resolve({ data: [], error: null }),
-      insert: () => Promise.resolve({ data: {}, error: null }),
-      update: () => Promise.resolve({ data: {}, error: null }),
-      delete: () => Promise.resolve({ data: {}, error: null })
-    })
+    from: (table) => {
+      return {
+        select: (columns = '*') => {
+          if (table === 'users') {
+            return Promise.resolve({ 
+              data: inMemoryUsers, 
+              error: null,
+              single: () => {
+                return Promise.resolve({ 
+                  data: inMemoryUsers.length > 0 ? inMemoryUsers[0] : null, 
+                  error: null 
+                });
+              },
+              eq: (column, value) => {
+                const filteredData = inMemoryUsers.filter(user => user[column] === value);
+                return {
+                  single: () => {
+                    return Promise.resolve({ 
+                      data: filteredData.length > 0 ? filteredData[0] : null, 
+                      error: null 
+                    });
+                  }
+                };
+              },
+              limit: () => Promise.resolve({ data: inMemoryUsers.slice(0, 1), error: null })
+            });
+          }
+          return Promise.resolve({ data: [], error: null });
+        },
+        insert: (records) => {
+          if (table === 'users') {
+            const newUsers = records.map(record => {
+              const newUser = {
+                id: nextUserId++,
+                username: record.username,
+                password: record.password,
+                full_name: record.full_name,
+                email: record.email,
+                role: record.role,
+                grade: record.grade,
+                join_date: new Date().toISOString()
+              };
+              inMemoryUsers.push(newUser);
+              return newUser;
+            });
+            
+            return {
+              select: () => {
+                return {
+                  single: () => {
+                    return Promise.resolve({ 
+                      data: newUsers.length > 0 ? newUsers[0] : null, 
+                      error: null 
+                    });
+                  }
+                };
+              }
+            };
+          }
+          return {
+            select: () => {
+              return {
+                single: () => {
+                  return Promise.resolve({ 
+                    data: { id: Math.floor(Math.random() * 1000) + 1 }, 
+                    error: null 
+                  });
+                }
+              };
+            }
+          };
+        },
+        update: (records) => Promise.resolve({ data: records, error: null }),
+        delete: () => Promise.resolve({ data: {}, error: null }),
+        eq: () => ({
+          single: () => Promise.resolve({ data: null, error: null })
+        })
+      };
+    }
   };
 }
 
