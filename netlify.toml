@@ -2,7 +2,7 @@
   command = "npm ci && npm run build"
   publish = "dist"
   base = "."
-  environment = { NODE_VERSION = "18" }
+  environment = { NODE_VERSION = "18", NODE_ENV = "production", USE_SUPABASE = "false" }
 
 [[redirects]]
   from = "/*"
